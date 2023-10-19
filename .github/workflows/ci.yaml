@@ -135,7 +135,7 @@ jobs:
           kubernetes version: 'v1.21.0'
           driver: 'docker'
           github token: ${{ secrets.GITHUB_TOKEN }}
-          start args: '--addons=ingress --memory 2048 --cpus 2'
+          start args: '--addons=ingress --memory 4096 --cpus 2'
       - name: Run the devfile registry integration tests
         run: | 
           export GOPATH=$(go env GOPATH)
