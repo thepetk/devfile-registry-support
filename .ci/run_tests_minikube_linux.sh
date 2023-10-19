@@ -37,13 +37,13 @@ fi
 # Use the test registry image built in the previous step.
 # Since minikube is running on Docker, we can specify a local image NOT pushed up to a registry
 # This saves us a fair bit of hassle with having to dynamically push the test image to a container registry
-helm install devfile-registry9 ./deploy/chart/devfile-registry --set global.ingress.domain="$(minikube ip).nip.io" \
+helm install devfile-registry ./deploy/chart/devfile-registry --set global.ingress.domain="$(minikube ip).nip.io" \
 	--set devfileIndex.image=devfile-index \
 	--set devfileIndex.tag=latest \
 	--set devfileIndex.imagePullPolicy=Never
 
 # Wait for the registry to become ready
-kubectl wait deploy/devfile-registry9 --for=condition=Available --timeout=30s
+kubectl wait deploy/devfile-registry --for=condition=Available --timeout=600s
 if [ $? -ne 0 ]; then
   echo "devfile-registry container logs:"
   kubectl logs -l app=devfile-registry --container devfile-registry
@@ -56,7 +56,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Get the ingress URL for the registry
-export REGISTRY=http://$(kubectl get ingress devfile-registry9 -o jsonpath="{.spec.rules[0].host}")
+export REGISTRY=http://$(kubectl get ingress devfile-registry -o jsonpath="{.spec.rules[0].host}")
 
 # Run the integration tests
 cd tests/integration
