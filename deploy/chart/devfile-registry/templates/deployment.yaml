@@ -1,17 +1,17 @@
 #
-#   Copyright 2021-2022 Red Hat, Inc.
+# Copyright Red Hat
 #
-#   Licensed under the Apache License, Version 2.0 (the "License");
-#   you may not use this file except in compliance with the License.
-#   You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-#      http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-#   Unless required by applicable law or agreed to in writing, software
-#   distributed under the License is distributed on an "AS IS" BASIS,
-#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#   See the License for the specific language governing permissions and
-#   limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 apiVersion: apps/v1
 kind: Deployment
@@ -59,49 +59,31 @@ spec:
               - key: .env.registry-viewer
                 path: .env.production
       containers:
-      - image: "{{ .Values.devfileIndex.image }}:{{ .Values.devfileIndex.tag }}"
-        imagePullPolicy: {{ .Values.devfileIndex.imagePullPolicy }}
-        name: devfile-registry
+      - image: "{{ .Values.ociRegistry.image }}:{{ .Values.ociRegistry.tag }}"
+        imagePullPolicy: {{ .Values.ociRegistry.imagePullPolicy }}
+        name: oci-registry
         ports:
-        - containerPort: 8080
         livenessProbe:
           httpGet:
-            path: /health
-            port: 8080
+            path: /v2
+            port: 5000
             scheme: HTTP
-          initialDelaySeconds: 15
+          initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 3
         readinessProbe:
           httpGet:
-            path: /health
-            port: 8080
+            path: /v2
+            port: 5000
             scheme: HTTP
-          initialDelaySeconds: 15
+          initialDelaySeconds: 3
           periodSeconds: 10
           timeoutSeconds: 3
-        {{- if not .Values.global.headless }}
-        startupProbe:
-          httpGet:
-            path: /viewer
-            port: 3000
-            scheme: HTTP
-          initialDelaySeconds: 30
-          periodSeconds: 1
-          timeoutSeconds: 10
-        {{- end }}
         resources:
           limits:
-            memory: {{ .Values.devfileIndex.memoryLimit }}
+            memory: {{ .Values.ociRegistry.memoryLimit }}
           requests:
             memory: 64Mi
-        env:
-          - name: REGISTRY_NAME
-            value: {{ .Values.telemetry.registryName }}
-          - name: TELEMETRY_KEY
-            value: {{ .Values.telemetry.key }}
-          - name: REGISTRY_HEADLESS
-            value: "{{ .Values.global.headless }}"
         securityContext:
           allowPrivilegeEscalation: false
           runAsNonRoot: true
@@ -109,6 +91,12 @@ spec:
             drop: ["ALL"]
           seccompProfile:
             type: "RuntimeDefault"
+        volumeMounts:
+        - name: devfile-registry-storage
+          mountPath: "/var/lib/registry"
+        - name: config
+          mountPath: "/etc/docker/registry"
+          readOnly: true
       {{- if not .Values.global.headless }}
       - image: "{{ .Values.registryViewer.image }}:{{ .Values.registryViewer.tag }}"
         imagePullPolicy: {{ .Values.registryViewer.imagePullPolicy }}
@@ -160,31 +148,49 @@ spec:
           seccompProfile:
             type: "RuntimeDefault"
       {{- end }}
-      - image: "{{ .Values.ociRegistry.image }}:{{ .Values.ociRegistry.tag }}"
-        imagePullPolicy: {{ .Values.ociRegistry.imagePullPolicy }}
-        name: oci-registry
+      - image: "{{ .Values.devfileIndex.image }}:{{ .Values.devfileIndex.tag }}"
+        imagePullPolicy: {{ .Values.devfileIndex.imagePullPolicy }}
+        name: devfile-registry
         ports:
+        - containerPort: 8080
         livenessProbe:
           httpGet:
-            path: /v2
-            port: 5000
+            path: /health
+            port: 8080
             scheme: HTTP
-          initialDelaySeconds: 30
+          initialDelaySeconds: 15
           periodSeconds: 10
           timeoutSeconds: 3
         readinessProbe:
           httpGet:
-            path: /v2
-            port: 5000
+            path: /health
+            port: 8080
             scheme: HTTP
-          initialDelaySeconds: 3
+          initialDelaySeconds: 15
           periodSeconds: 10
           timeoutSeconds: 3
+        {{- if not .Values.global.headless }}
+        startupProbe:
+          httpGet:
+            path: /viewer
+            port: 3000
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 1
+          timeoutSeconds: 10
+        {{- end }}
         resources:
           limits:
-            memory: {{ .Values.ociRegistry.memoryLimit }}
+            memory: {{ .Values.devfileIndex.memoryLimit }}
           requests:
             memory: 64Mi
+        env:
+          - name: REGISTRY_NAME
+            value: {{ .Values.telemetry.registryName }}
+          - name: TELEMETRY_KEY
+            value: {{ .Values.telemetry.key }}
+          - name: REGISTRY_HEADLESS
+            value: "{{ .Values.global.headless }}"
         securityContext:
           allowPrivilegeEscalation: false
           runAsNonRoot: true
@@ -192,9 +198,3 @@ spec:
             drop: ["ALL"]
           seccompProfile:
             type: "RuntimeDefault"
-        volumeMounts:
-        - name: devfile-registry-storage
-          mountPath: "/var/lib/registry"
-        - name: config
-          mountPath: "/etc/docker/registry"
-          readOnly: true
