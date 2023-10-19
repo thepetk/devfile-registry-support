@@ -43,7 +43,7 @@ helm install devfile-registry ./deploy/chart/devfile-registry --set global.ingre
 	--set devfileIndex.imagePullPolicy=Never
 
 # Wait for the registry to become ready
-kubectl wait deploy/devfile-registry --for=condition=Available --timeout=600s
+kubectl wait deploy/devfile-registry --for=condition=Available --timeout=1200s
 if [ $? -ne 0 ]; then
   echo "devfile-registry container logs:"
   kubectl logs -l app=devfile-registry --container devfile-registry
