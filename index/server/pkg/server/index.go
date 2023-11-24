@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -68,12 +69,23 @@ func ServeRegistry() {
 	handler := http.NewServeMux()
 	handler.Handle("/metrics", promhttp.Handler())
 	prometheus.MustRegister(getIndexLatency)
+
+	// Retrieve the option to enable HTTP2
+	enableHTTP2 := os.Getenv("ENABLE_HTTP2")
+	if enableHTTP2 == "" {
+		enableHTTP2 = "false"
+	}
+
 	indexServer := &http.Server{
 		Addr:         ":7071",
 		Handler:      handler,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
-		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler)),
+	}
+
+	// Disable HTTP2 by default
+	if enableHTTP2 == "false" {
+		indexServer.TLSNextProto = make(map[string]func(*http.Server, *tls.Conn, http.Handler))
 	}
 
 	go indexServer.ListenAndServe()
